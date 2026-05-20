@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neurofile - Supabase</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); margin-bottom: 25px; text-align: center; }
+        .header h1 { color: #2d3748; margin-bottom: 10px; font-size: 2.5em; }
+        .nav-tabs { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+        .nav-tabs button { padding: 12px 25px; border: none; border-radius: 30px; background: #667eea; color: white; cursor: pointer; transition: all 0.3s; font-weight: 600; min-width: 150px; }
+        .nav-tabs button:hover { background: #5a67d8; transform: translateY(-3px); }
+        .nav-tabs button.active { background: #48bb78; box-shadow: 0 5px 20px rgba(72,187,120,0.4); }
+        .section { background: white; padding: 35px; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.15); margin-bottom: 25px; display: none; }
+        .section.active { display: block; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748; font-size: 1.1em; }
+        input, textarea, select { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; transition: all 0.3s; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+        .btn { background: linear-gradient(45deg, #48bb78, #38a169); color: white; padding: 15px 30px; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s; width: 100%; margin-top: 10px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(72,187,120,0.4); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-danger { background: linear-gradient(45deg, #f56565, #e53e3e); }
+        .btn-danger:hover { box-shadow: 0 10px 25px rgba(245,101,101,0.4); }
+        .btn-warning { background: linear-gradient(45deg, #ed8936, #dd6b20); }
+        .btn-warning:hover { box-shadow: 0 10px 25px rgba(237,137,54,0.4); }
+        .btn-secondary { background: linear-gradient(45deg, #a0aec0, #718096); }
+        .btn-small { width: auto; padding: 10px 20px; margin: 5px; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; }
+        .card { background: linear-gradient(135deg, #f7fafc, #edf2f7); padding: 25px; border-radius: 15px; border-left: 5px solid #667eea; box-shadow: 0 8px 25px rgba(0,0,0,0.1); transition: all 0.3s; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
+        .card h3 { color: #2d3748; margin-bottom: 15px; font-size: 1.4em; }
+        .patient-card, .record-card { background: white; padding: 20px; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 40px; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; }
+        .close-modal { position: absolute; top: 20px; right: 25px; font-size: 28px; cursor: pointer; color: #a0aec0; }
+        .close-modal:hover { color: #f56565; }
+        .alert { padding: 20px; border-radius: 12px; margin: 20px 0; font-weight: 500; }
+        .alert-success { background: #c6f6d5; color: #22543d; border-left: 5px solid #48bb78; }
+        .alert-error { background: #fed7d7; color: #742a2a; border-left: 5px solid #f56565; }
+        .user-welcome { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 30px; }
+        .code-input-container { background: #f0f9ff; padding: 25px; border-radius: 15px; border: 3px dashed #0ea5e9; margin: 25px 0; text-align: center; }
+        .code-input-container input { font-size: 1.4em; font-weight: bold; letter-spacing: 4px; text-transform: uppercase; text-align: center; border: 3px solid #0ea5e9; background: white; }
+        .logs-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .logs-table th, .logs-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .logs-table th { background: #f7fafc; font-weight: 600; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(102,126,234,0.85); z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-size: 1.3em; font-weight: 600; gap: 20px; }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* ── BANNER DE CONFIGURACIÓN ── */
+        #configBanner { background: #fff3cd; border: 2px solid #ffc107; border-radius: 15px; padding: 25px; margin-bottom: 20px; }
+        #configBanner h3 { color: #856404; margin-bottom: 15px; }
+        #configBanner input { border: 2px solid #ffc107; margin-bottom: 10px; }
+        @media (max-width: 768px) { .form-grid, .cards-grid { grid-template-columns: 1fr; } .nav-tabs { flex-direction: column; align-items: center; } .container { padding: 10px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ══ BANNER: CONFIGURACIÓN SUPABASE ══ -->
+    <div id="configBanner">
+        <h3>⚙️ Configuración Supabase</h3>
+        <p style="margin-bottom:15px; color:#856404;">Ingresa tus credenciales una vez. Se guardan en localStorage solo para esta configuración.</p>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>URL del Proyecto</label>
+                <input type="text" id="cfgUrl" placeholder="https://xxxx.supabase.co">
+            </div>
+            <div class="form-group">
+                <label>Anon Key</label>
+                <input type="text" id="cfgKey" placeholder="eyJhbGciOi...">
+            </div>
+        </div>
+        <button class="btn btn-small" style="width:auto;" onclick="saveConfig()">💾 Guardar y Conectar</button>
+    </div>
+
+    <!-- ══ HEADER ══ -->
+    <div class="header">
+        <h1>🧠 NEUROFILE</h1>
+        <p>Sistema Integral de Gestión Psicológica</p>
+        <div id="publicNav" class="nav-tabs">
+            <button class="active" onclick="showSection('login')">🔐 Iniciar Sesión</button>
+            <button onclick="showSection('register-patient')">👤 Registro Paciente</button>
+            <button onclick="showSection('register-specialist')">👨‍⚕️ Registro Especialista</button>
+        </div>
+        <div id="userNav" class="nav-tabs" style="display: none;">
+            <span id="userWelcome" style="color:white;font-weight:600;padding:12px 25px;background:rgba(255,255,255,0.2);border-radius:30px;margin-right:15px;"></span>
+            <button onclick="showSection('dashboard')">📊 Dashboard</button>
+            <button onclick="loadProfile()">👤 Mi Perfil</button>
+            <button onclick="logout()">🚪 Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <!-- ══ SECCIONES ══ -->
+    <div id="login" class="section active">
+        <h2>🔐 Iniciar Sesión</h2>
+        <div class="form-grid">
+            <div class="form-group"><label>Correo Electrónico</label><input type="email" id="loginEmail" placeholder="tu@email.com"></div>
+            <div class="form-group"><label>Contraseña</label><input type="password" id="loginPassword" placeholder="••••••••"></div>
+        </div>
+        <button class="btn" onclick="loginUser()">🚀 Iniciar Sesión</button>
+        <div style="text-align:center;margin-top:20px;">
+            <button class="btn btn-secondary btn-small" onclick="showSection('forgot-password')">🔑 ¿Olvidaste tu contraseña?</button>
+        </div>
+    </div>
+
+    <div id="register-specialist" class="section">
+        <h2>👨‍⚕️ Registro Especialista</h2>
+        <div class="form-grid">
+            <div class="form-group"><label>Nombre Completo *</label><input type="text" id="specName" placeholder="Juan Pérez López"></div>
+            <div class="form-group"><label>Correo Electrónico *</label><input type="email" id="specEmail" placeholder="juan@consultorio.com"></div>
+            <div class="form-group"><label>Contraseña *</label><input type="password" id="specPassword" placeholder="Mínimo 6 caracteres"></div>
+            <div class="form-group"><label>Título Profesional *</label><input type="text" id="specTitle" placeholder="Psicólogo Clínico"></div>
+            <div class="form-group"><label>Cédula Profesional *</label><input type="text" id="specLicense" placeholder="1234567"></div>
+            <div class="form-group"><label>Dirección Consultorio *</label><textarea id="specAddress" rows="3" placeholder="Calle Principal #123"></textarea></div>
+        </div>
+        <button class="btn" onclick="registerSpecialist()">✅ Registrarse</button>
+    </div>
+
+    <div id="register-patient" class="section">
+        <h2>👤 Registro Paciente</h2>
+        <div class="form-grid">
+            <div class="form-group"><label>Nombre de Usuario *</label><input type="text" id="patientUsername" placeholder="miusuario123"></div>
+            <div class="form-group"><label>Correo Electrónico *</label><input type="email" id="patientEmail" placeholder="paciente@email.com"></div>
+            <div class="form-group"><label>Contraseña *</label><input type="password" id="patientPassword" placeholder="Mínimo 6 caracteres"></div>
+        </div>
+        <button class="btn" onclick="registerPatient()">✅ Registrarse</button>
+    </div>
+
+    <div id="forgot-password" class="section">
+        <h2>🔑 Recuperar Contraseña</h2>
+        <div class="form-group"><label>Correo Electrónico</label><input type="email" id="recoverEmail" placeholder="tu@email.com"></div>
+        <button class="btn" onclick="recoverPassword()">📧 Enviar Correo de Recuperación</button>
+        <div id="recoveryResult"></div>
+    </div>
+
+    <div id="dashboard" class="section"><div id="dashboard-content"></div></div>
+    <div id="profile" class="section"><div id="profile-content"></div></div>
+    <div id="patient-records" class="section"><div id="records-content"></div></div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCRIPT PRINCIPAL
+══════════════════════════════════════════ -->
+<script>
+// ── VARIABLES GLOBALES ──
+let supabaseClient = null;
+let currentUser = null;
+let currentProfile = null;   // fila en specialists / patients
+let currentUserType = null;
+let currentPatient = null;
+
+// ── INICIALIZACIÓN ──
+window.addEventListener('DOMContentLoaded', () => {
+    const url = localStorage.getItem('nf_supabase_url');
+    const key = localStorage.getItem('nf_supabase_key');
+    if (url && key) {
+        document.getElementById('cfgUrl').value = url;
+        document.getElementById('cfgKey').value = key;
+        initSupabase(url, key);
+    }
+});
+
+function saveConfig() {
+    const url = document.getElementById('cfgUrl').value.trim();
+    const key = document.getElementById('cfgKey').value.trim();
+    if (!url || !key) return showAlert('error', '❌ Completa ambos campos');
+    localStorage.setItem('nf_supabase_url', url);
+    localStorage.setItem('nf_supabase_key', key);
+    showAlert('error','Todo Bien');
+    initSupabase(url, key);
+}
+
+function initSupabase(url, key) {
+    supabaseClient = window.supabase.createClient(url, key);
+    document.getElementById('configBanner').style.display = 'none';
+    showAlert('success', '✅ Conectado a Supabase');
+    // Verificar sesión activa
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (session) resumeSession(session.user);
+    });
+}
+
+// ══════════════════════════════════════════
+// AUTENTICACIÓN
+// ══════════════════════════════════════════
+
+// RF-03: LOGIN
+async function loginUser() {
+    if (!supabaseClient) return showAlert('error', '❌ Configura Supabase primero');
+    const email    = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const password = document.getElementById('loginPassword').value;
+
+    showLoading(true);
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    showLoading(false);
+
+    if (error) return showAlert('error', '❌ Credenciales incorrectas: ' + error.message);
+
+    await resumeSession(data.user);
+    addLog('LOGIN', email);
+}
+
+// Reanuda sesión existente o recién logueada
+async function resumeSession(authUser) {
+    currentUser = authUser;
+
+    // Determinar tipo buscando en specialists y patients
+    const { data: spec } = await supabaseClient
+        .from('specialists').select('*').eq('auth_id', authUser.id).single();
+    const { data: pat } = await supabaseClient
+        .from('patients').select('*').eq('auth_id', authUser.id).single();
+    const { data: adm } = await supabaseClient
+        .from('admins').select('*').eq('auth_id', authUser.id).single();
+
+    if (spec) {
+        currentProfile  = spec;
+        currentUserType = 'specialist';
+        showUserInterface(spec.name);
+        loadSpecialistDashboard();
+    } else if (pat) {
+        currentProfile  = pat;
+        currentUserType = 'patient';
+        showUserInterface(pat.username);
+        loadPatientDashboard();
+    } else if (adm) {
+        currentProfile  = adm;
+        currentUserType = 'admin';
+        showUserInterface(adm.name);
+        loadAdminDashboard();
+    } else {
+        showAlert('error', '❌ Perfil no encontrado. Contacta al administrador.');
+        await supabaseClient.auth.signOut();
+    }
+}
+
+// RF-01: REGISTRO ESPECIALISTA
+async function registerSpecialist() {
+    if (!supabaseClient) return showAlert('error', '❌ Configura Supabase primero');
+    const name     = document.getElementById('specName').value.trim();
+    const email    = document.getElementById('specEmail').value.trim().toLowerCase();
+    const password = document.getElementById('specPassword').value;
+    const title    = document.getElementById('specTitle').value.trim();
+    const license  = document.getElementById('specLicense').value.trim();
+    const address  = document.getElementById('specAddress').value.trim();
+
+    if (!name || !email || !password || !title || !license || !address)
+        return showAlert('error', '❌ Completa todos los campos');
+    if (password.length < 6)
+        return showAlert('error', '❌ Contraseña mínimo 6 caracteres');
+
+    showLoading(true);
+
+    // Crear usuario en Supabase Auth
+    const { data: authData, error: authErr } = await supabaseClient.auth.signUp({ email, password });
+    if (authErr) { showLoading(false); return showAlert('error', '❌ ' + authErr.message); }
+
+    // Guardar perfil en tabla specialists
+    const { error: dbErr } = await supabaseClient.from('specialists').insert({
+        auth_id: authData.user.id,
+        name, email, title, license, address,
+        active: true
+    });
+
+    showLoading(false);
+    if (dbErr) return showAlert('error', '❌ Error guardando perfil: ' + dbErr.message);
+
+    showAlert('success', '✅ Especialista registrado. Revisa tu correo para confirmar tu cuenta.');
+    setTimeout(() => showSection('login'), 2500);
+}
+
+// RF-02: REGISTRO PACIENTE
+async function registerPatient() {
+    if (!supabaseClient) return showAlert('error', '❌ Configura Supabase primero');
+    const username = document.getElementById('patientUsername').value.trim();
+    const email    = document.getElementById('patientEmail').value.trim().toLowerCase();
+    const password = document.getElementById('patientPassword').value;
+
+    if (!username || !email || !password)
+        return showAlert('error', '❌ Completa todos los campos');
+    if (password.length < 6)
+        return showAlert('error', '❌ Contraseña mínimo 6 caracteres');
+
+    showLoading(true);
+
+    const { data: authData, error: authErr } = await supabaseClient.auth.signUp({ email, password });
+    if (authErr) { showLoading(false); return showAlert('error', '❌ ' + authErr.message); }
+
+    const { error: dbErr } = await supabaseClient.from('patients').insert({
+        auth_id: authData.user.id,
+        username, email,
+        active: true
+    });
+
+    showLoading(false);
+    if (dbErr) return showAlert('error', '❌ Error guardando perfil: ' + dbErr.message);
+
+    showAlert('success', '✅ Paciente registrado. Revisa tu correo para confirmar tu cuenta.');
+    setTimeout(() => showSection('login'), 2500);
+}
+
+// RF-04: RECUPERAR CONTRASEÑA (Supabase envía el email real)
+async function recoverPassword() {
+    if (!supabaseClient) return showAlert('error', '❌ Configura Supabase primero');
+    const email = document.getElementById('recoverEmail').value.trim().toLowerCase();
+    if (!email) return showAlert('error', '❌ Ingresa tu correo');
+
+    showLoading(true);
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href
+    });
+    showLoading(false);
+
+    if (error) return showAlert('error', '❌ ' + error.message);
+    document.getElementById('recoveryResult').innerHTML =
+        '<div class="alert alert-success">📧 Se envió un enlace de recuperación a <strong>' + email + '</strong>. Revisa tu bandeja.</div>';
+}
+
+// LOGOUT
+async function logout() {
+    await supabaseClient.auth.signOut();
+    currentUser = null; currentProfile = null; currentUserType = null;
+    document.getElementById('publicNav').style.display  = 'flex';
+    document.getElementById('userNav').style.display    = 'none';
+    showSection('login');
+}
+
+// ══════════════════════════════════════════
+// DASHBOARDS
+// ══════════════════════════════════════════
+
+// DASHBOARD ESPECIALISTA
+async function loadSpecialistDashboard() {
+    showLoading(true);
+
+    // Pacientes autorizados a este especialista
+    const { data: perms } = await supabaseClient
+        .from('permissions')
+        .select('*, patients(*)')
+        .eq('specialist_id', currentProfile.id)
+        .eq('active', true);
+
+    showLoading(false);
+
+    const authorizedPatients = (perms || []).map(p => p.patients).filter(Boolean);
+
+    let html = `
+        <div class="user-welcome">
+            <h2>👨‍⚕️ ${currentProfile.name}</h2>
+            <p>${currentProfile.title} | Cédula: ${currentProfile.license} | ${currentProfile.address}</p>
+        </div>
+        <div class="code-input-container">
+            <h3 style="color:#0ea5e9;margin-bottom:15px;">🔑 Solicitar Acceso a Paciente</h3>
+            <input type="text" id="specialistAccessCode" placeholder="AUTH_ABC12345" maxlength="20" style="font-size:1.5em;padding:20px;">
+            <br><br>
+            <button class="btn" onclick="requestPatientAccess()" style="width:auto;padding:15px 40px;font-size:1.2em;">✅ AUTORIZAR ACCESO</button>
+            <p style="margin-top:15px;color:#666;font-size:0.95em;">Pide el código al paciente y pégalo aquí</p>
+        </div>
+    `;
+
+    if (authorizedPatients.length > 0) {
+        html += `<h2 style="color:#48bb78;">📋 Tus Pacientes Autorizados (${authorizedPatients.length})</h2><div class="cards-grid">`;
+        authorizedPatients.forEach(patient => {
+            html += `
+                <div class="card patient-card">
+                    <h3>👤 ${patient.username}</h3>
+                    <p><strong>Correo:</strong> ${patient.email}</p>
+                    ${patient.profile_info
+                        ? `<div style="background:#f0fff4;padding:15px;border-radius:10px;margin:15px 0;"><strong>Perfil:</strong> ${String(patient.profile_info).substring(0,120)}...</div>`
+                        : '<p style="color:#ed8936;">⚠️ Sin perfil clínico aún</p>'}
+                    <div>
+                        <button class="btn btn-small" onclick="loadPatientRecords('${patient.id}')">📁 Expediente</button>
+                        <button class="btn-warning btn-small" onclick="createClinicalProfile('${patient.id}')">➕ Perfil Clínico</button>
+                    </div>
+                </div>`;
+        });
+        html += '</div>';
+    } else {
+        html += `<div class="alert alert-success" style="text-align:center;"><h3>👆 Solicita acceso ingresando un código arriba</h3><p>Una vez autorizado, aparecerán aquí tus pacientes</p></div>`;
+    }
+
+    document.getElementById('dashboard-content').innerHTML = html;
+}
+
+// DASHBOARD PACIENTE
+async function loadPatientDashboard() {
+    showLoading(true);
+    const { data: perms } = await supabaseClient
+        .from('permissions')
+        .select('*, specialists(*)')
+        .eq('patient_id', currentProfile.id)
+        .eq('active', true)
+        .not('specialist_id', 'is', null);
+    showLoading(false);
+
+    let authHtml = '';
+    (perms || []).forEach(p => {
+        authHtml += `
+            <div class="patient-card" style="display:flex;justify-content:space-between;align-items:center;">
+                <span><strong>${p.specialists?.name || 'Especialista'}</strong></span>
+                <button class="btn-danger btn-small" onclick="revokePermission('${p.id}')">Revocar</button>
+            </div>`;
+    });
+
+    document.getElementById('dashboard-content').innerHTML = `
+        <div class="user-welcome">
+            <h2>👤 ${currentProfile.username}</h2>
+            <p>Gestión de tu expediente clínico</p>
+        </div>
+        <div class="cards-grid">
+            <div class="card">
+                <h3>📋 Mi Perfil</h3>
+                <p><strong>Usuario:</strong> ${currentProfile.username}</p>
+                <p><strong>Email:</strong> ${currentProfile.email}</p>
+            </div>
+            <div class="card">
+                <h3>🎫 Autorizaciones</h3>
+                <button class="btn" onclick="generateAuthCode()">🔑 Generar Código</button>
+                ${authHtml}
+            </div>
+        </div>`;
+}
+
+// ══════════════════════════════════════════
+// RF-13: GENERAR CÓDIGO PACIENTE
+// ══════════════════════════════════════════
+async function generateAuthCode() {
+    const code = 'AUTH_' + Math.random().toString(36).substr(2, 8).toUpperCase();
+
+    showLoading(true);
+    const { error } = await supabaseClient.from('permissions').insert({
+        patient_id:   currentProfile.id,
+        patient_name: currentProfile.username,
+        code,
+        active: true
+    });
+    showLoading(false);
+
+    if (error) return showAlert('error', '❌ ' + error.message);
+
+    addLog('CODIGO_GENERADO', currentProfile.username);
+
+    showModal(`
+        <h3 style="color:#48bb78;">🎫 ¡CÓDIGO GENERADO!</h3>
+        <div style="text-align:center;padding:30px;background:linear-gradient(135deg,#f0fff4,#c6f6d5);border-radius:20px;margin:25px 0;">
+            <div style="font-size:3em;font-weight:bold;color:#38a169;letter-spacing:8px;margin-bottom:15px;">${code}</div>
+            <p style="font-size:1.2em;color:#2d3748;">Comparte este código con tu especialista</p>
+        </div>
+        <div style="text-align:center;">
+            <button class="btn btn-small" onclick="closeModal()">✅ Listo</button>
+        </div>
+    `);
+}
+
+// RF-14: ESPECIALISTA USA EL CÓDIGO
+async function requestPatientAccess() {
+    const codeInput = document.getElementById('specialistAccessCode').value.trim().toUpperCase();
+    if (!codeInput) return showAlert('error', '❌ Ingresa un código');
+
+    showLoading(true);
+    const { data: perm, error } = await supabaseClient
+        .from('permissions')
+        .select('*')
+        .eq('code', codeInput)
+        .eq('active', true)
+        .is('specialist_id', null)
+        .single();
+    
+    if (error || !perm) {
+        showLoading(false);
+        return showAlert('error', `❌ Código <strong>${codeInput}</strong> no válido o ya utilizado`);
+    }
+
+    const { error: updErr } = await supabaseClient
+        .from('permissions')
+        .update({ specialist_id: currentProfile.id, specialist_name: currentProfile.name })
+        .eq('id', perm.id);
+
+    showLoading(false);
+    if (updErr) return showAlert('error', '❌ ' + updErr.message);
+
+    document.getElementById('specialistAccessCode').value = '';
+    showAlert('success', `✅ ¡ACCESO CONCEDIDO! Ahora puedes ver el expediente de <strong>${perm.patient_name}</strong>`);
+    addLog('ACCESO_CONCEDIDO', `${currentProfile.name} -> ${perm.patient_name} (${codeInput})`);
+    setTimeout(() => loadSpecialistDashboard(), 1500);
+}
+
+// RF-15: REVOCAR PERMISO
+async function revokePermission(permId) {
+    showLoading(true);
+    await supabaseClient.from('permissions').update({ active: false }).eq('id', permId);
+    showLoading(false);
+    showAlert('success', '✅ Acceso revocado');
+    loadPatientDashboard();
+}
+
+// ══════════════════════════════════════════
+// RF-05: PERFIL CLÍNICO
+// ══════════════════════════════════════════
+function createClinicalProfile(patientId) {
+    showModal(`
+        <h2>📋 Crear/Editar Perfil Clínico</h2>
+        <div class="form-group">
+            <label>Información Básica</label>
+            <textarea id="basicInfo" rows="5" placeholder="Motivo de consulta, antecedentes, diagnóstico inicial..."></textarea>
+        </div>
+        <button class="btn" onclick="saveClinicalProfile('${patientId}')">💾 Guardar Perfil</button>
+    `);
+}
+
+async function saveClinicalProfile(patientId) {
+    const info = document.getElementById('basicInfo').value;
+    showLoading(true);
+    const { error } = await supabaseClient
+        .from('patients')
+        .update({ profile_info: info, profile_created_by: currentProfile.name })
+        .eq('id', patientId);
+    showLoading(false);
+    if (error) return showAlert('error', '❌ ' + error.message);
+    closeModal();
+    showAlert('success', '✅ Perfil clínico creado');
+    addLog('PERFIL_CREADO', patientId);
+    loadSpecialistDashboard();
+}
+
+// ══════════════════════════════════════════
+// RF-08: EXPEDIENTE
+// ══════════════════════════════════════════
+async function loadPatientRecords(patientId) {
+    showLoading(true);
+    const { data: patient } = await supabaseClient.from('patients').select('*').eq('id', patientId).single();
+    const { data: records } = await supabaseClient
+        .from('records')
+        .select('*, comments(*)')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false });
+    showLoading(false);
+
+    currentPatient = patient;
+    let html = `
+        <div class="user-welcome">
+            <h2>📁 Expediente Clínico</h2>
+            <p>Paciente: ${patient.username}</p>
+        </div>
+        <button class="btn" onclick="showCreateRecordModal('${patientId}')">➕ Nuevo Registro Clínico</button>
+        <button class="btn-warning" onclick="downloadPDF('${patientId}')" style="margin-top:10px;">📄 Descargar PDF</button>
+        <hr style="margin:30px 0;">
+        <h2>📝 Registros Clínicos</h2>
+    `;
+
+    if (!records || records.length === 0) {
+        html += '<div class="alert alert-success">⚠️ No existen registros clínicos todavía</div>';
+    } else {
+        records.forEach(record => {
+            const comments = record.comments || [];
+            html += `
+                <div class="record-card">
+                    <h3>📌 ${record.title}</h3>
+                    <p><strong>Especialista:</strong> ${record.specialist_name}</p>
+                    <p><strong>Fecha:</strong> ${new Date(record.created_at).toLocaleString()}</p>
+                    <div style="background:#f7fafc;padding:15px;border-radius:10px;margin:15px 0;">${record.content}</div>
+                    <h4>💬 Comentarios</h4>
+                    ${comments.map(c => `
+                        <div style="background:#edf2f7;padding:10px;margin:10px 0;border-radius:10px;">
+                            <strong>${c.author}</strong><br>${c.text}
+                        </div>`).join('')}
+                    <textarea id="comment_${record.id}" placeholder="Agregar comentario..."></textarea>
+                    <button class="btn-small btn" onclick="addComment('${record.id}','${patientId}')">💬 Comentar</button>
+                    <hr style="margin:15px 0;">
+                    <button class="btn-warning btn-small" onclick="editRecord('${record.id}','${patientId}')">✏️ Editar</button>
+                    <button class="btn-danger btn-small" onclick="deleteRecord('${record.id}','${patientId}')">🗑️ Eliminar</button>
+                </div>`;
+        });
+    }
+
+    document.getElementById('records-content').innerHTML = html;
+    showSection('patient-records');
+}
+
+// RF-08: CREAR REGISTRO
+function showCreateRecordModal(patientId) {
+    showModal(`
+        <h2>📝 Nuevo Registro Clínico</h2>
+        <div class="form-group"><label>Título</label><input type="text" id="recordTitle"></div>
+        <div class="form-group"><label>Notas Clínicas</label><textarea id="recordContent" rows="8"></textarea></div>
+        <button class="btn" onclick="saveClinicalRecord('${patientId}')">💾 Guardar Registro</button>
+    `);
+}
+
+async function saveClinicalRecord(patientId) {
+    const title   = document.getElementById('recordTitle').value;
+    const content = document.getElementById('recordContent').value;
+    showLoading(true);
+    const { error } = await supabaseClient.from('records').insert({
+        patient_id:      patientId,
+        specialist_id:   currentProfile.id,
+        specialist_name: currentProfile.name,
+        title, content
+    });
+    showLoading(false);
+    if (error) return showAlert('error', '❌ ' + error.message);
+    closeModal();
+    showAlert('success', '✅ Registro clínico creado');
+    addLog('REGISTRO_CREADO', `Paciente: ${patientId}`);
+    loadPatientRecords(patientId);
+}
+
+// RF-09: EDITAR REGISTRO
+function editRecord(recordId, patientId) {
+    showModal(`
+        <h2>✏️ Editar Registro</h2>
+        <div class="form-group"><label>Título</label><input type="text" id="editTitle"></div>
+        <div class="form-group"><label>Contenido</label><textarea id="editContent" rows="8"></textarea></div>
+        <button class="btn" onclick="updateRecord('${recordId}','${patientId}')">💾 Guardar Cambios</button>
+    `);
+    // Pre-cargar valores actuales
+    supabaseClient.from('records').select('*').eq('id', recordId).single().then(({ data }) => {
+        if (data) {
+            document.getElementById('editTitle').value   = data.title;
+            document.getElementById('editContent').value = data.content;
+        }
+    });
+}
+
+async function updateRecord(recordId, patientId) {
+    const title   = document.getElementById('editTitle').value;
+    const content = document.getElementById('editContent').value;
+    showLoading(true);
+    const { error } = await supabaseClient.from('records')
+        .update({ title, content, updated_at: new Date().toISOString() })
+        .eq('id', recordId);
+    showLoading(false);
+    if (error) return showAlert('error', '❌ ' + error.message);
+    closeModal();
+    showAlert('success', '✅ Registro actualizado');
+    loadPatientRecords(patientId);
+}
+
+// RF-10: ELIMINAR REGISTRO
+async function deleteRecord(recordId, patientId) {
+    if (!confirm('¿Eliminar este registro clínico?')) return;
+    showLoading(true);
+    await supabaseClient.from('comments').delete().eq('record_id', recordId);
+    const { error } = await supabaseClient.from('records').delete().eq('id', recordId);
+    showLoading(false);
+    if (error) return showAlert('error', '❌ ' + error.message);
+    showAlert('success', '✅ Registro eliminado');
+    loadPatientRecords(patientId);
+}
+
+// RF-16: COMENTARIOS
+async function addComment(recordId, patientId) {
+    const text = document.getElementById(`comment_${recordId}`).value;
+    if (!text.trim()) return;
+    showLoading(true);
+    const { error } = await supabaseClient.from('comments').insert({
+        record_id: recordId,
+        author:    currentProfile.name || currentProfile.username,
+        text
+    });
+    showLoading(false);
+    if (error) return showAlert('error', '❌ ' + error.message);
+    loadPatientRecords(patientId);
+}
+
+// RF-12: PDF
+async function downloadPDF(patientId) {
+    showLoading(true);
+    const { data: patient } = await supabaseClient.from('patients').select('*').eq('id', patientId).single();
+    const { data: records  } = await supabaseClient.from('records').select('*').eq('patient_id', patientId);
+    showLoading(false);
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('NEUROFILE - EXPEDIENTE CLÍNICO', 20, 20);
+    doc.setFontSize(14);
+    doc.text(`Paciente: ${patient.username}`, 20, 40);
+    let y = 60;
+    (records || []).forEach(record => {
+        doc.setFontSize(12);
+        if (y > 260) { doc.addPage(); y = 20; }
+        doc.text(`Título: ${record.title}`, 20, y); y += 10;
+        doc.text(`Especialista: ${record.specialist_name}`, 20, y); y += 10;
+        const lines = doc.splitTextToSize(`Notas: ${record.content}`, 170);
+        doc.text(lines, 20, y); y += lines.length * 7 + 10;
+    });
+    doc.save(`Expediente_${patient.username}.pdf`);
+}
+
+// ══════════════════════════════════════════
+// PERFIL
+// ══════════════════════════════════════════
+async function loadProfile() {
+    showLoading(true);
+    let html = '';
+
+    if (currentUserType === 'patient') {
+        const { data: perms } = await supabaseClient
+            .from('permissions').select('*, specialists(*)')
+            .eq('patient_id', currentProfile.id).not('specialist_id', 'is', null);
+
+        html = `
+            <div class="user-welcome"><h2>👤 Perfil del Paciente</h2><p>Información de tu cuenta</p></div>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>🧾 Información General</h3>
+                    <p><strong>Usuario:</strong> ${currentProfile.username}</p>
+                    <p><strong>Correo:</strong> ${currentProfile.email}</p>
+                    <p><strong>Registro:</strong> ${new Date(currentProfile.created_at).toLocaleDateString()}</p>
+                </div>
+                <div class="card">
+                    <h3>👨‍⚕️ Especialistas Autorizados</h3>
+                    ${(perms||[]).length > 0
+                        ? (perms||[]).map(p => `<div style="background:#f7fafc;padding:12px;border-radius:10px;margin:10px 0;"><strong>${p.specialists?.name||'Especialista'}</strong><br>${p.specialists?.title||''}</div>`).join('')
+                        : '<p>⚠️ No tienes especialistas autorizados aún</p>'}
+                </div>
+            </div>`;
+    }
+
+    if (currentUserType === 'specialist') {
+        const { count: totalPat } = await supabaseClient.from('permissions').select('*', {count:'exact',head:true}).eq('specialist_id', currentProfile.id).eq('active', true);
+        const { count: totalRec } = await supabaseClient.from('records').select('*', {count:'exact',head:true}).eq('specialist_id', currentProfile.id);
+        html = `
+            <div class="user-welcome"><h2>👨‍⚕️ Perfil del Especialista</h2><p>Información profesional</p></div>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>🧾 Datos Profesionales</h3>
+                    <p><strong>Nombre:</strong> ${currentProfile.name}</p>
+                    <p><strong>Correo:</strong> ${currentProfile.email}</p>
+                    <p><strong>Título:</strong> ${currentProfile.title}</p>
+                    <p><strong>Cédula:</strong> ${currentProfile.license}</p>
+                    <p><strong>Consultorio:</strong> ${currentProfile.address}</p>
+                </div>
+                <div class="card">
+                    <h3>📊 Estadísticas</h3>
+                    <p><strong>Pacientes autorizados:</strong> ${totalPat||0}</p>
+                    <p><strong>Registros clínicos:</strong> ${totalRec||0}</p>
+                    <p><strong>Estado:</strong> 🟢 Activo</p>
+                </div>
+            </div>`;
+    }
+
+    if (currentUserType === 'admin') {
+        html = `
+            <div class="user-welcome"><h2>🛠️ Perfil Administrador</h2></div>
+            <div class="card">
+                <h3>🔐 Datos del Administrador</h3>
+                <p><strong>Nombre:</strong> ${currentProfile.name}</p>
+                <p><strong>Correo:</strong> ${currentProfile.email}</p>
+                <p><strong>Rol:</strong> Administrador General</p>
+            </div>`;
+    }
+
+    showLoading(false);
+    document.getElementById('profile-content').innerHTML = html;
+    showSection('profile');
+}
+
+// ══════════════════════════════════════════
+// RF-18: ADMIN DASHBOARD
+// ══════════════════════════════════════════
+async function loadAdminDashboard() {
+    showLoading(true);
+    const { data: specialists } = await supabaseClient.from('specialists').select('*').order('created_at');
+    const { data: patients    } = await supabaseClient.from('patients').select('*').order('created_at');
+    const { data: records     } = await supabaseClient.from('records').select('id');
+    const { data: logs        } = await supabaseClient.from('logs').select('*').order('created_at', {ascending:false}).limit(100);
+    showLoading(false);
+
+    let html = `
+        <div class="user-welcome"><h2>🛠️ Panel Administrador</h2><p>Gestión y supervisión del sistema</p></div>
+        <div class="cards-grid">
+            <div class="card"><h3>👨‍⚕️ Especialistas</h3><p style="font-size:2em;font-weight:bold;">${(specialists||[]).length}</p></div>
+            <div class="card"><h3>👤 Pacientes</h3><p style="font-size:2em;font-weight:bold;">${(patients||[]).length}</p></div>
+            <div class="card"><h3>📁 Registros</h3><p style="font-size:2em;font-weight:bold;">${(records||[]).length}</p></div>
+        </div>
+        <hr style="margin:30px 0;">
+        <h2>👨‍⚕️ Especialistas Registrados</h2>`;
+
+    (specialists||[]).forEach(spec => {
+        html += `
+            <div class="patient-card">
+                <h3>${spec.name}</h3>
+                <p><strong>Email:</strong> ${spec.email}</p>
+                <p><strong>Cédula:</strong> ${spec.license}</p>
+                <p><strong>Estado:</strong> ${spec.active ? '🟢 Activo' : '🔴 Desactivado'}</p>
+                <button class="${spec.active ? 'btn-danger' : 'btn'} btn-small" onclick="toggleSpecialist('${spec.id}',${!spec.active})">
+                    ${spec.active ? '🚫 Desactivar' : '✅ Activar'}
+                </button>
+            </div>`;
+    });
+
+    html += '<hr style="margin:30px 0;"><h2>👤 Pacientes Registrados</h2>';
+
+    (patients||[]).forEach(pat => {
+        html += `
+            <div class="patient-card">
+                <h3>${pat.username}</h3>
+                <p><strong>Email:</strong> ${pat.email}</p>
+                <p><strong>Estado:</strong> ${pat.active !== false ? '🟢 Activo' : '🔴 Desactivado'}</p>
+                <button class="${pat.active !== false ? 'btn-danger' : 'btn'} btn-small" onclick="togglePatient('${pat.id}',${!(pat.active !== false)})">
+                    ${pat.active !== false ? '🚫 Desactivar' : '✅ Activar'}
+                </button>
+            </div>`;
+    });
+
+    html += `
+        <hr style="margin:30px 0;"><h2>📜 Logs del Sistema</h2>
+        <table class="logs-table">
+            <tr><th>Fecha</th><th>Acción</th><th>Usuario</th><th>Detalles</th></tr>
+            ${(logs||[]).map(l => `
+                <tr>
+                    <td>${new Date(l.created_at).toLocaleString()}</td>
+                    <td>${l.action}</td>
+                    <td>${l.user_name}</td>
+                    <td>${l.details}</td>
+                </tr>`).join('')}
+        </table>`;
+
+    document.getElementById('dashboard-content').innerHTML = html;
+}
+
+async function toggleSpecialist(id, newActive) {
+    await supabaseClient.from('specialists').update({ active: newActive }).eq('id', id);
+    addLog('CUENTA_ESPECIALISTA', `ID:${id} -> ${newActive ? 'ACTIVADA' : 'DESACTIVADA'}`);
+    showAlert('success', `✅ Cuenta ${newActive ? 'activada' : 'desactivada'}`);
+    loadAdminDashboard();
+}
+
+async function togglePatient(id, newActive) {
+    await supabaseClient.from('patients').update({ active: newActive }).eq('id', id);
+    addLog('CUENTA_PACIENTE', `ID:${id} -> ${newActive ? 'ACTIVADA' : 'DESACTIVADA'}`);
+    showAlert('success', `✅ Cuenta ${newActive ? 'activada' : 'desactivada'}`);
+    loadAdminDashboard();
+}
+
+// ══════════════════════════════════════════
+// UTILIDADES
+// ══════════════════════════════════════════
+function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id)?.classList.add('active');
+}
+
+function showUserInterface(name) {
+    document.getElementById('publicNav').style.display  = 'none';
+    document.getElementById('userNav').style.display    = 'flex';
+    document.getElementById('userWelcome').textContent  = name;
+    showSection('dashboard');
+}
+
+function showAlert(type, msg) {
+    const div = document.createElement('div');
+    div.className = `alert alert-${type}`;
+    div.innerHTML  = msg;
+    const container = document.querySelector('.container');
+    const header    = document.querySelector('.header');
+    container.insertBefore(div, header.nextSibling);
+    setTimeout(() => div.remove(), 5000);
+}
+
+function showModal(content) {
+    document.getElementById('modal-body').innerHTML = content;
+    document.getElementById('modal').classList.add('active');
+}
+function closeModal() { document.getElementById('modal').classList.remove('active'); }
+
+function showLoading(show) {
+    let overlay = document.getElementById('loadingOverlay');
+    if (show) {
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'loadingOverlay';
+            overlay.className = 'loading-overlay';
+            overlay.innerHTML = '<div class="spinner"></div><span>Cargando...</span>';
+            document.body.appendChild(overlay);
+        }
+        overlay.style.display = 'flex';
+    } else if (overlay) {
+        overlay.style.display = 'none';
+    }
+}
+
+async function addLog(action, details) {
+    if (!supabaseClient || !currentProfile) return;
+    await supabaseClient.from('logs').insert({
+        action,
+        user_name: currentProfile.name || currentProfile.username || currentUser?.email,
+        details
+    });
+}
+</script>
+</body>
+</html>
